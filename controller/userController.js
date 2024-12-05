@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+import bcrypt from "bcrypt.js";
 import asyncHandler from "../middlewares/asyncHandler.middleware.js";
 import { User } from "../model/userModel.js";
 import AppError from "../utils/error.util.js";

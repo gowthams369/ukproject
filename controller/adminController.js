@@ -1,6 +1,6 @@
 import { Admin } from "../model/adminModel.js";
 import asyncHandler from "../middlewares/asyncHandler.middleware.js";
-import bcrypt from "bcrypt";
+import bcrypt from "bcrypt.js";
 import AppError from "../utils/error.util.js";
 import { User } from "../model/userModel.js";
 import redis from "redis";
