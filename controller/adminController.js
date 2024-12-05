@@ -130,6 +130,30 @@ export const logoutAdmin = asyncHandler(async (req, res, next) => {
     });
   });
 
+  export const admitUser = asyncHandler(async (req, res, next) => {
+    const { userId } = req.body;
+  
+    // Validate userId
+    if (!userId) {
+      return next(new AppError("User ID is required", 400));
+    }
+  
+    // Find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return next(new AppError("User not found", 404));
+    }
+  
+    // Update admission status
+    user.isAdmitted = true;
+    await user.save();
+  
+    res.status(200).json({
+      success: true,
+      message: "User admitted successfully.",
+    });
+  });
+
 
 
 const redisClient = redis.createClient();

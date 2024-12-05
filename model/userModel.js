@@ -19,6 +19,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
     //   default: false, // Default is 'true' (user is ready to work)
     },
+    isAdmitted: { type: Boolean, default: false },
+    readyToWork: [{
+        type: Boolean,
+    }],
   },
   { timestamps: true }
 );
