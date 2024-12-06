@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import AppError from "../utils/error.util.js";
 import { User } from "../model/userModel.js";
 import redis from "redis";
+import { Activity } from "../model/activityModel.js";
 
 
 /**
@@ -154,6 +155,67 @@ export const logoutAdmin = asyncHandler(async (req, res, next) => {
     });
   });
 
+ /**
+ * Admin: Get total working days with details for all users
+ */
+export const getAllUsersWorkingDaysWithDetails = asyncHandler(async (req, res) => {
+  try {
+    // Fetch all completed activities
+    const activities = await Activity.find({ isActive: false }) // Only completed activities
+      .populate("user", "firstname lastname email") // Populate user details
+      .select("user startTime location"); // Select relevant fields
 
+    if (activities.length === 0) {
+      return res.status(404).json({ message: "No completed work found for any user." });
+    }
+
+    // Group activities by user and then by date
+    const userWorkingDays = activities.reduce((result, activity) => {
+      const userId = activity.user._id;
+      const date = new Date(activity.startTime).toISOString().split("T")[0]; // Extract date
+      const time = new Date(activity.startTime).toISOString().split("T")[1]; // Extract time
+      const location = activity.location;
+
+      if (!result[userId]) {
+        result[userId] = {
+          userDetails: {
+            id: userId,
+            firstname: activity.user.firstname,
+            lastname: activity.user.lastname,
+            email: activity.user.email,
+          },
+          workingDays: {},
+        };
+      }
+
+      if (!result[userId].workingDays[date]) {
+        result[userId].workingDays[date] = [];
+      }
+
+      result[userId].workingDays[date].push({ time, location });
+
+      return result;
+    }, {});
+
+    // Format the response
+    const formattedResponse = Object.values(userWorkingDays).map((user) => ({
+      userDetails: user.userDetails,
+      totalWorkingDays: Object.keys(user.workingDays).length,
+      workingDaysDetails: Object.entries(user.workingDays).map(([date, details]) => ({
+        date,
+        details,
+      })),
+    }));
+
+    res.status(200).json({
+      success: true,
+      message: "Working days details retrieved successfully.",
+      data: formattedResponse,
+    });
+  } catch (error) {
+    console.error("Error fetching working days for all users:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
 
 const redisClient = redis.createClient();

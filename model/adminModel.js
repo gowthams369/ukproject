@@ -4,8 +4,21 @@ import jwt from "jsonwebtoken";
 // Define the admin schema
 const adminSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      unique: true, // Ensures each email is unique
+      lowercase: true,
+      match: [
+        /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+        "Please provide a valid email address",
+      ],
+    },
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+      minlength: [6, "Password must be at least 6 characters long"],
+    },
     role: {
       type: String,
       default: "admin",

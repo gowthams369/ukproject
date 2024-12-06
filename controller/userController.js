@@ -2,53 +2,55 @@ import bcrypt from "bcryptjs";
 import asyncHandler from "../middlewares/asyncHandler.middleware.js";
 import { User } from "../model/userModel.js";
 import AppError from "../utils/error.util.js";
+import { Activity } from "../model/activityModel.js";
 
 /**
  * @REGISTER_USER -----------------------REGISTER NEW USER-----------------------
  * Registers a new user by creating a record in the database.
  */
 export const registerUser = asyncHandler(async (req, res, next) => {
-    const { firstname, lastname, email, dateOfBirth, phoneNumber, password } = req.body;
-  
-    // Validate required fields
-    if (!firstname || !lastname || !email || !dateOfBirth || !phoneNumber || !password) {
-      return next(new AppError("All fields are required", 400));
-    }
-  
-    // Check if the email is already registered
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return next(new AppError("Email is already registered", 400));
-    }
-  
-    // Hash the password before saving
-    const hashedPassword = await bcrypt.hash(password, 10);
-  
-    // Create a new user
-    const user = new User({
-      firstname,
-      lastname,
-      email,
-      dateOfBirth,
-      phoneNumber,
-      password: hashedPassword,
-    });
-  
-    // Save the user to the database
-    await user.save();
-  
-    res.status(201).json({
-      success: true,
-      message: "User registered successfully",
-      user: {
-        id: user._id,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        email: user.email,
-        role: user.role,
-      },
-    });
+  const { firstname, lastname, email, dateOfBirth, phoneNumber, password } = req.body;
+
+  // Validate required fields
+  if (!firstname || !lastname || !email || !dateOfBirth || !phoneNumber || !password) {
+    return next(new AppError("All fields are required", 400));
+  }
+
+  // Check if the email is already registered
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    return next(new AppError("Email is already registered", 400));
+  }
+
+  // Hash the password before saving
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Create a new user
+  const user = new User({
+    firstname,
+    lastname,
+    email,
+    dateOfBirth,
+    phoneNumber,
+    password: hashedPassword,
+    isAdmitted: false,
   });
+
+  // Save the user to the database
+  await user.save();
+
+  res.status(201).json({
+    success: true,
+    message: "User registered successfully",
+    user: {
+      id: user._id,
+      firstname: user.firstname,
+      lastname: user.lastname,
+      email: user.email,
+      role: user.role,
+    },
+  });
+});
 
 
 /**

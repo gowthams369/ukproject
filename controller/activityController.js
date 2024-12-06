@@ -1,6 +1,6 @@
 import {Activity} from "../model/activityModel.js";
 import asyncHandler from "../middlewares/asyncHandler.middleware.js";
-import AppError from "../utils/error.util.js";
+import {User} from "../model/userModel.js";
 
 export const setUserActive = async (req, res) => {
   const { userId } = req.body;
@@ -53,52 +53,66 @@ export const getActiveUsers = asyncHandler(async (req, res) => {
 });
 
 /**
- * Admin assigns a location to an active user
+ * Admin assigns a location to an active user or creates a new activity for the next day
  */
 export const assignLocationToActiveUser = asyncHandler(async (req, res) => {
-  const { activityId, location } = req.body;
+  const { userId, location } = req.body;
 
-  if (!activityId || !location) {
-    return res.status(400).json({ message: "Activity ID and location are required." });
+  if (!userId || !location) {
+    return res.status(400).json({ message: "User ID and location are required." });
   }
 
   try {
-    // Fetch the activity
-    const activity = await Activity.findById(activityId).populate("user", "firstname lastname");
-
-    if (!activity) {
-      return res.status(404).json({ message: "Activity not found." });
+    // Ensure the user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
     }
 
-    // Ensure the user is active
-    if (!activity.isActive) {
-      return res.status(400).json({
-        message: `User ${activity.user.firstname} ${activity.user.lastname} is not currently active.`,
-      });
+    // Fetch the current active activity for the user
+    let activity = await Activity.findOne({ user: userId, isActive: true });
+
+    // Check if the activity exists and belongs to today
+    const today = new Date().setHours(0, 0, 0, 0); // Start of today
+    if (activity && new Date(activity.startTime).setHours(0, 0, 0, 0) === today) {
+      return res.status(400).json({ message: "The user already has an active task for today." });
     }
 
-    // Assign the location
-    activity.location = location;
-    activity.lastUpdated = Date.now(); // Update the timestamp
-    await activity.save();
+    // Deactivate the previous activity (if any)
+    if (activity) {
+      activity.isActive = false;
+      await activity.save();
+    }
 
-    res.status(200).json({
+    // Create a new activity for today
+    const newActivity = new Activity({
+      user: userId,
+      location,
+      isActive: true,
+      startTime: null, // Reset start time
+      endTime: null, // Reset end time
+      nurseSignature: null, // Reset nurse details
+      nurseName: null, // Reset nurse details
+    });
+
+    await newActivity.save();
+
+    res.status(201).json({
       success: true,
-      message: `Location assigned successfully to ${activity.user.firstname} ${activity.user.lastname}.`,
-      activity,
+      message: "New activity assigned successfully.",
+      activity: newActivity,
     });
   } catch (error) {
-    console.error("Error assigning location:", error);
+    console.error("Error assigning new activity:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
-
 
 /**
  * User fetches their assigned work
  */
 export const getUserAssignedWork = asyncHandler(async (req, res) => {
-  const { userId } = req.body; // Get the user ID directly from the request body
+  const { userId } = req.body;
 
   if (!userId) {
     return res.status(400).json({ message: "User ID is required." });
@@ -107,8 +121,8 @@ export const getUserAssignedWork = asyncHandler(async (req, res) => {
   try {
     // Fetch the activity assigned to the user
     const activity = await Activity.findOne({ user: userId, isActive: true })
-      .populate("user", "firstname lastname email") // Populate the user fields
-      .populate("location", "name address"); // Optionally, populate location details if needed
+      .populate("user", "firstname lastname email")
+      .populate("location", "name address");
 
     if (!activity) {
       return res.status(404).json({ message: "No active work assigned to this user." });
@@ -117,7 +131,10 @@ export const getUserAssignedWork = asyncHandler(async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Assigned work fetched successfully.",
-      activity,
+      activity: {
+        ...activity.toObject(),
+        startTime: activity.startTime ? activity.startTime : null, // Show start time if available
+      },
     });
   } catch (error) {
     console.error("Error fetching assigned work:", error);
@@ -209,9 +226,9 @@ export const submitNurseSignature = asyncHandler(async (req, res) => {
 });
 
 /**
- * Get total working days for a user
+ * Get total working days with details for a user
  */
-export const getTotalWorkingDays = asyncHandler(async (req, res) => {
+export const getTotalWorkingDaysWithDetails = asyncHandler(async (req, res) => {
   const { userId } = req.body;
 
   if (!userId) {
@@ -229,18 +246,36 @@ export const getTotalWorkingDays = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: "No completed work found for this user." });
     }
 
-    // Extract unique working days
-    const workingDays = new Set(
-      activities.map((activity) =>
-        new Date(activity.startTime).toISOString().split("T")[0] // Extract only the date part
-      )
-    );
+    // Group activities by date
+    const workingDaysDetails = activities.reduce((details, activity) => {
+      const date = new Date(activity.startTime).toISOString().split("T")[0]; // Extract only the date part
+      const time = new Date(activity.startTime).toISOString().split("T")[1]; // Extract time
+      const location = activity.location ; // Add location if available
 
-    res.status(200).json({
+      if (!details[date]) {
+        details[date] = [];
+      }
+
+      details[date].push({
+        time,
+        location,
+      });
+
+      return details;
+    }, {});
+
+    // Format the response
+    const response = {
       success: true,
-      message: `Total working days: ${workingDays.size}`,
-      totalWorkingDays: workingDays.size,
-    });
+      message: `Total working days: ${Object.keys(workingDaysDetails).length}`,
+      totalWorkingDays: Object.keys(workingDaysDetails).length,
+      workingDaysDetails: Object.entries(workingDaysDetails).map(([date, details]) => ({
+        date,
+        details,
+      })),
+    };
+
+    res.status(200).json(response);
   } catch (error) {
     console.error("Error calculating total working days:", error);
     res.status(500).json({ message: "Server error", error: error.message });
