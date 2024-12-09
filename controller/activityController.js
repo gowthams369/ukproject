@@ -267,7 +267,7 @@ export const getTotalWorkingDaysWithDetails = asyncHandler(async (req, res) => {
     // Format the response
     const response = {
       success: true,
-      message: `Total working days: ${Object.keys(workingDaysDetails).length}`,
+      message:`Total working days: ${Object.keys(workingDaysDetails).length}`,
       totalWorkingDays: Object.keys(workingDaysDetails).length,
       workingDaysDetails: Object.entries(workingDaysDetails).map(([date, details]) => ({
         date,

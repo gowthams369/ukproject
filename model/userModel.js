@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema(
     },
     readyToWork: {
       type: Boolean,
-    //   default: false, // Default is 'true' (user is ready to work)
+      default: false, // Default is 'true' (user is ready to work)
     },
     isAdmitted: { type: Boolean, default: false },
     readyToWork: [{

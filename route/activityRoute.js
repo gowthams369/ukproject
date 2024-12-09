@@ -18,6 +18,6 @@ activityroute.post("/assignLocationToActiveUser",assignLocationToActiveUser );
 activityroute.get("/:userId/getUserAssignedWork",getUserAssignedWork);
 activityroute.get("/:userId/startWork",startWork);
 activityroute.post("/submitNurseSignature",submitNurseSignature);
-activityroute.get("/:userId/getTotalWorkingDaysWithDetails",getTotalWorkingDaysWithDetails);
+activityroute.post("/getTotalWorkingDaysWithDetails",getTotalWorkingDaysWithDetails);
 
 export default activityroute;

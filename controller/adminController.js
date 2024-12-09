@@ -155,7 +155,7 @@ export const logoutAdmin = asyncHandler(async (req, res, next) => {
     });
   });
 
- /**
+/**
  * Admin: Get total working days with details for all users
  */
 export const getAllUsersWorkingDaysWithDetails = asyncHandler(async (req, res) => {
@@ -171,6 +171,12 @@ export const getAllUsersWorkingDaysWithDetails = asyncHandler(async (req, res) =
 
     // Group activities by user and then by date
     const userWorkingDays = activities.reduce((result, activity) => {
+      // Validate startTime
+      if (!activity.startTime || isNaN(new Date(activity.startTime).getTime())) {
+        console.warn("Invalid startTime for activity:", activity);
+        return result; // Skip invalid activity
+      }
+
       const userId = activity.user._id;
       const date = new Date(activity.startTime).toISOString().split("T")[0]; // Extract date
       const time = new Date(activity.startTime).toISOString().split("T")[1]; // Extract time
@@ -217,5 +223,6 @@ export const getAllUsersWorkingDaysWithDetails = asyncHandler(async (req, res) =
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
+
 
 const redisClient = redis.createClient();

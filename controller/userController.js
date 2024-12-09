@@ -4,6 +4,7 @@ import { User } from "../model/userModel.js";
 import AppError from "../utils/error.util.js";
 import { Activity } from "../model/activityModel.js";
 
+
 /**
  * @REGISTER_USER -----------------------REGISTER NEW USER-----------------------
  * Registers a new user by creating a record in the database.
