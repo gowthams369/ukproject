@@ -5,6 +5,7 @@ import {
   getAllUsers,
   logoutAdmin,
   admitUser,
+  getUnadmittedUsers,
   getAllUsersWorkingDaysWithDetails
 } from "../controller/adminController.js";
 
@@ -15,6 +16,8 @@ route.post("/login", login);
 route.get("/getAllUsers",getAllUsers);
 route.post("/logout",logoutAdmin);
 route.post("/admitUser",admitUser);
+route.get('/getUnadmittedUsers', getUnadmittedUsers);
+
 route.get("/getAllUsersWorkingDaysWithDetails",getAllUsersWorkingDaysWithDetails);
 
 

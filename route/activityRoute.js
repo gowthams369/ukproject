@@ -6,7 +6,7 @@ import { setUserActive,
     getUserAssignedWork,
     startWork,
     submitNurseSignature,
-    getTotalWorkingDaysWithDetails,
+    getUserWorkingDaysWithDetails,
  }from "../controller/activityController.js";
 
 const activityroute = express.Router();
@@ -18,6 +18,6 @@ activityroute.post("/assignLocationToActiveUser",assignLocationToActiveUser );
 activityroute.get("/:userId/getUserAssignedWork",getUserAssignedWork);
 activityroute.get("/:userId/startWork",startWork);
 activityroute.post("/submitNurseSignature",submitNurseSignature);
-activityroute.post("/getTotalWorkingDaysWithDetails",getTotalWorkingDaysWithDetails);
+activityroute.post("/getUserWorkingDaysWithDetails",getUserWorkingDaysWithDetails);
 
 export default activityroute;

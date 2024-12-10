@@ -225,11 +225,15 @@ export const submitNurseSignature = asyncHandler(async (req, res) => {
   }
 });
 
+
+
+
+
 /**
- * Get total working days with details for a user
+ * User: Get total working days with details for a specified user
  */
-export const getTotalWorkingDaysWithDetails = asyncHandler(async (req, res) => {
-  const { userId } = req.body;
+export const getUserWorkingDaysWithDetails = asyncHandler(async (req, res) => {
+  const { userId } = req.body; // User ID passed in the request body
 
   if (!userId) {
     return res.status(400).json({ message: "User ID is required." });
@@ -237,37 +241,37 @@ export const getTotalWorkingDaysWithDetails = asyncHandler(async (req, res) => {
 
   try {
     // Fetch all completed activities for the user
-    const activities = await Activity.find({
-      user: userId,
-      isActive: false, // Completed activities
-    });
+    const activities = await Activity.find({ user: userId, isActive: false }) // Only completed activities
+      .select("startTime location"); // Select relevant fields
 
     if (activities.length === 0) {
       return res.status(404).json({ message: "No completed work found for this user." });
     }
 
     // Group activities by date
-    const workingDaysDetails = activities.reduce((details, activity) => {
-      const date = new Date(activity.startTime).toISOString().split("T")[0]; // Extract only the date part
-      const time = new Date(activity.startTime).toISOString().split("T")[1]; // Extract time
-      const location = activity.location ; // Add location if available
-
-      if (!details[date]) {
-        details[date] = [];
+    const workingDaysDetails = activities.reduce((result, activity) => {
+      // Validate startTime
+      if (!activity.startTime || isNaN(new Date(activity.startTime).getTime())) {
+        console.warn("Invalid startTime for activity:", activity);
+        return result; // Skip invalid activity
       }
 
-      details[date].push({
-        time,
-        location,
-      });
+      const date = new Date(activity.startTime).toISOString().split("T")[0]; // Extract date
+      const time = new Date(activity.startTime).toISOString().split("T")[1]; // Extract time
+      const location = activity.location || "Unknown"; // Default location if missing
 
-      return details;
+      if (!result[date]) {
+        result[date] = [];
+      }
+
+      result[date].push({ time, location });
+
+      return result;
     }, {});
 
     // Format the response
-    const response = {
-      success: true,
-      message:`Total working days: ${Object.keys(workingDaysDetails).length}`,
+    const formattedResponse = {
+      userId,
       totalWorkingDays: Object.keys(workingDaysDetails).length,
       workingDaysDetails: Object.entries(workingDaysDetails).map(([date, details]) => ({
         date,
@@ -275,9 +279,13 @@ export const getTotalWorkingDaysWithDetails = asyncHandler(async (req, res) => {
       })),
     };
 
-    res.status(200).json(response);
+    res.status(200).json({
+      success: true,
+      message: "Working days details retrieved successfully.",
+      data: formattedResponse,
+    });
   } catch (error) {
-    console.error("Error calculating total working days:", error);
+    console.error("Error fetching working days for user:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });

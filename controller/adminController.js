@@ -101,6 +101,41 @@ export const getAllUsers = asyncHandler(async (req, res, next) => {
 
 
 /**
+ * @ADMIN_GET_UNADMITTED_USERS ----------------GET UNADMITTED USERS---------------
+ * Retrieves all users who are not admitted.
+ */
+export const getUnadmittedUsers = asyncHandler(async (req, res, next) => {
+  try {
+    // Find all users with isAdmitted set to false
+    const unadmittedUsers = await User.find({ isAdmitted: false }, { password: 0 }); // Exclude password from the response
+
+    // Handle no results found
+    if (!unadmittedUsers || unadmittedUsers.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No unadmitted users found",
+      });
+    }
+
+    // Respond with unadmitted users
+    res.status(200).json({
+      success: true,
+      message: "Unadmitted users fetched successfully",
+      unadmittedUsers,
+    });
+  } catch (error) {
+    // Handle server error
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching unadmitted users",
+      error: error.message,
+    });
+  }
+});
+
+
+
+/**
  * @ADMIN_LOGOUT -----------------------ADMIN LOGOUT-----------------------
  * Logs out an admin by marking them as inactive (optional) or simply removing any session (if applicable).
  */
