@@ -23,6 +23,11 @@ const userSchema = new mongoose.Schema(
       required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters long"],
     },
+    currentActivity: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Activity",
+      default: null,  // Initially, no activity is assigned
+    },
     role: {
       type: String,
       default: "user", // Default role is 'user'

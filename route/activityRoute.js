@@ -2,8 +2,6 @@
 import express from "express";
 import { setUserActive, 
     getActiveUsers,
-    assignLocationToActiveUser,
-    getUserAssignedWork,
     startWork,
     submitNurseSignature,
     getUserWorkingDaysWithDetails,
@@ -14,9 +12,7 @@ const activityroute = express.Router();
 // Route to toggle user activity
 activityroute.post("/setUserActive", setUserActive);
 activityroute.get("/getActiveUsers", getActiveUsers);
-activityroute.post("/assignLocationToActiveUser",assignLocationToActiveUser );
-activityroute.get("/:userId/getUserAssignedWork",getUserAssignedWork);
-activityroute.get("/:userId/startWork",startWork);
+activityroute.post("/startWork",startWork);
 activityroute.post("/submitNurseSignature",submitNurseSignature);
 activityroute.post("/getUserWorkingDaysWithDetails",getUserWorkingDaysWithDetails);
 

@@ -1,6 +1,7 @@
 import {Activity} from "../model/activityModel.js";
 import asyncHandler from "../middlewares/asyncHandler.middleware.js";
-import {User} from "../model/userModel.js";
+import { User } from "../model/userModel.js";
+
 
 export const setUserActive = async (req, res) => {
   const { userId } = req.body;
@@ -27,7 +28,7 @@ export const setUserActive = async (req, res) => {
     // Respond once after successful save
     res.status(200).json({
       success: true,
-      message: `User activity set to ${activity.isActive ? "active" : "inactive"}`,
+      message:`User activity set to ${activity.isActive ? "active" : "inactive"}`,
       activity,
     });
   } catch (error) {
@@ -52,10 +53,11 @@ export const getActiveUsers = asyncHandler(async (req, res) => {
   });
 });
 
+
 /**
- * Admin assigns a location to an active user or creates a new activity for the next day
+ * User starts work by swiping
  */
-export const assignLocationToActiveUser = asyncHandler(async (req, res) => {
+export const startWork = asyncHandler(async (req, res) => {
   const { userId, location } = req.body;
 
   if (!userId || !location) {
@@ -63,123 +65,45 @@ export const assignLocationToActiveUser = asyncHandler(async (req, res) => {
   }
 
   try {
-    // Ensure the user exists
+    // Fetch the user by userId
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
 
-    // Fetch the current active activity for the user
-    let activity = await Activity.findOne({ user: userId, isActive: true });
+    // Fetch the active activity assigned to the user
+    const activity = await Activity.findOne({ user: userId, isActive: true });
 
-    // Check if the activity exists and belongs to today
-    const today = new Date().setHours(0, 0, 0, 0); // Start of today
-    if (activity && new Date(activity.startTime).setHours(0, 0, 0, 0) === today) {
-      return res.status(400).json({ message: "The user already has an active task for today." });
-    }
-
-    // Deactivate the previous activity (if any)
     if (activity) {
-      activity.isActive = false;
-      await activity.save();
+      return res.status(400).json({ message: "An active activity already exists for this user." });
     }
 
-    // Create a new activity for today
+    // Create a new activity for the user
     const newActivity = new Activity({
       user: userId,
       location,
       isActive: true,
-      startTime: null, // Reset start time
-      endTime: null, // Reset end time
-      nurseSignature: null, // Reset nurse details
-      nurseName: null, // Reset nurse details
+      startTime: new Date(),
     });
 
+    // Save the activity to the database
     await newActivity.save();
 
-    res.status(201).json({
-      success: true,
-      message: "New activity assigned successfully.",
-      activity: newActivity,
-    });
-  } catch (error) {
-    console.error("Error assigning new activity:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-});
-
-/**
- * User fetches their assigned work
- */
-export const getUserAssignedWork = asyncHandler(async (req, res) => {
-  const { userId } = req.body;
-
-  if (!userId) {
-    return res.status(400).json({ message: "User ID is required." });
-  }
-
-  try {
-    // Fetch the activity assigned to the user
-    const activity = await Activity.findOne({ user: userId, isActive: true })
-      .populate("user", "firstname lastname email")
-      .populate("location", "name address");
-
-    if (!activity) {
-      return res.status(404).json({ message: "No active work assigned to this user." });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: "Assigned work fetched successfully.",
-      activity: {
-        ...activity.toObject(),
-        startTime: activity.startTime ? activity.startTime : null, // Show start time if available
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching assigned work:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-});
-
-/**
- * User starts work by swiping
- */
-export const startWork = asyncHandler(async (req, res) => {
-  const { userId } = req.body;
-
-  if (!userId) {
-    return res.status(400).json({ message: "User ID is required." });
-  }
-
-  try {
-    // Fetch the activity assigned to the user that is active
-    const activity = await Activity.findOne({ user: userId, isActive: true });
-
-    if (!activity) {
-      return res.status(404).json({ message: "No active work assigned to this user." });
-    }
-
-    // Check if work is already started
-    if (activity.startTime) {
-      return res.status(400).json({ message: "Work has already started." });
-    }
-
-    // Set the start time
-    activity.startTime = new Date();
-    await activity.save();
+    // Update the user's current activity field to the new activity
+    user.currentActivity = newActivity._id;
+    await user.save();
 
     res.status(200).json({
       success: true,
       message: "Work started successfully.",
-      startTime: activity.startTime,
+      startTime: newActivity.startTime,
+      location: newActivity.location,
     });
   } catch (error) {
     console.error("Error starting work:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
-
 
 /**
  * User swipes back and collects the nurse's signature (ends work)
