@@ -1,6 +1,6 @@
 // routes/activityRoutes.js
 import express from "express";
-import { setUserActive, 
+import {  
     getActiveUsers,
     startWork,
     submitNurseSignature,
@@ -10,7 +10,6 @@ import { setUserActive,
 const activityroute = express.Router();
 
 // Route to toggle user activity
-activityroute.post("/setUserActive", setUserActive);
 activityroute.get("/getActiveUsers", getActiveUsers);
 activityroute.post("/startWork",startWork);
 activityroute.post("/submitNurseSignature",submitNurseSignature);

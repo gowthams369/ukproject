@@ -225,15 +225,29 @@ export const getAllUsersWorkingDaysWithDetails = asyncHandler(async (req, res) =
             lastname: activity.user.lastname,
             email: activity.user.email,
           },
-          workingDays: {},
+          workingDays: {}, // Initialize an empty object to store working days
         };
       }
 
       if (!result[userId].workingDays[date]) {
-        result[userId].workingDays[date] = [];
+        result[userId].workingDays[date] = {
+          totalWorkingTime: 0, // Initialize total working time for the date
+          activities: [], // Array to store details of activities on this date
+        };
       }
 
-      result[userId].workingDays[date].push({ time, location });
+      // Add current activity details to the date
+      const activityDetails = {
+        time,
+        location,
+      };
+
+      result[userId].workingDays[date].activities.push(activityDetails);
+
+      // Calculate total working time for the date (time format: HH:MM:SS)
+      const [hours, minutes, seconds] = time.split(":");
+      const totalTimeInSeconds = parseInt(hours) * 3600 + parseInt(minutes) * 60 + parseInt(seconds);
+      result[userId].workingDays[date].totalWorkingTime += totalTimeInSeconds;
 
       return result;
     }, {});
@@ -244,7 +258,9 @@ export const getAllUsersWorkingDaysWithDetails = asyncHandler(async (req, res) =
       totalWorkingDays: Object.keys(user.workingDays).length,
       workingDaysDetails: Object.entries(user.workingDays).map(([date, details]) => ({
         date,
-        details,
+        totalWorkingTime: details.totalWorkingTime, // In seconds
+        workingTimeFormatted: formatTimeInHours(details.totalWorkingTime), // Formatted in hours
+        activities: details.activities, // Activities for this date
       })),
     }));
 
@@ -258,6 +274,12 @@ export const getAllUsersWorkingDaysWithDetails = asyncHandler(async (req, res) =
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
+
+// Helper function to format working time from seconds to hours
+const formatTimeInHours = (totalSeconds) => {
+  const hours = totalSeconds / 3600; // Convert seconds to hours
+  return hours.toFixed(2); // Limit to 2 decimal places
+};
 
 
 const redisClient = redis.createClient();

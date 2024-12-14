@@ -17,7 +17,6 @@ route.get("/getAllUsers",getAllUsers);
 route.post("/logout",logoutAdmin);
 route.post("/admitUser",admitUser);
 route.get('/getUnadmittedUsers', getUnadmittedUsers);
-
 route.get("/getAllUsersWorkingDaysWithDetails",getAllUsersWorkingDaysWithDetails);
 
 

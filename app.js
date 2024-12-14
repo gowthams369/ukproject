@@ -5,12 +5,15 @@ import bodyParser from "body-parser";
 import route from "./route/adminRoute.js";
 import userroute from "./route/userRoute.js";
 import activityroute from "./route/activityRoute.js";
+import cors from 'cors';
+
 
 
 dotenv.config();
 
 const app = express();
 app.use(bodyParser.json());
+app.use(cors());
 
 const PORT = process.env.PORT || 5000;
 const MONGOURL = process.env.MONGO_URL;
