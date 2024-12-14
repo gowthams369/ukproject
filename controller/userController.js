@@ -171,7 +171,7 @@ res.status(200).json({
 * Get total working days with total time details for a user
 */
 export const getTotalWorkingDaysWithDetails = async (req, res) => {
-const { userId } = req.body;
+const { userId } = req.params;
 
 if (!userId) {
   return res.status(400).json({ message: "User ID is required." });
