@@ -41,6 +41,11 @@ const userSchema = new mongoose.Schema(
     readyToWork: [{
         type: Boolean,
     }],
+    isActive: { 
+      type: Boolean, 
+      default: false, // Default to inactive when a user is created
+      required: true 
+    },
   },
   { timestamps: true }
 );
