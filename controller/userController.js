@@ -157,6 +157,7 @@ res.status(200).json({
         firstname: user.firstname,
         lastname: user.lastname,
         email: user.email,
+        phoneNumber:user.phoneNumber,
         role: user.role,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
@@ -164,6 +165,39 @@ res.status(200).json({
 });
 });
 
+
+// ----setuseractuve-----
+export const setUserActive = async (req, res) => {
+  const { userId, readyToWork } = req.body;
+
+  try {
+    // Check if the user exists
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Update the user's active status and readiness to work
+    user.isActive = !user.isActive; // Toggle the isActive status
+    if (readyToWork !== undefined) {
+      // Ensure readyToWork is provided and valid
+      user.readyToWork = Array.isArray(user.readyToWork)
+        ? [...user.readyToWork, readyToWork]
+        : [readyToWork];
+    }
+    await user.save();
+
+    // Respond after successfully updating the user
+    res.status(200).json({
+      success: true,
+      message: `User is now ${user.isActive ? "active" : "inactive"}`,
+      user,
+    });
+  } catch (error) {
+    // Handle errors
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 
 

@@ -6,7 +6,8 @@ import {
   logoutAdmin,
   admitUser,
   getUnadmittedUsers,
-  getAllUsersWorkingDaysWithDetails
+  getAllUsersWorkingDaysWithDetails,
+  assignLocationToActiveUser
 } from "../controller/adminController.js";
 
 const route = express.Router();
@@ -18,6 +19,7 @@ route.post("/logout",logoutAdmin);
 route.post("/admitUser",admitUser);
 route.get('/getUnadmittedUsers', getUnadmittedUsers);
 route.get("/getAllUsersWorkingDaysWithDetails",getAllUsersWorkingDaysWithDetails);
+route.post("/assignLocationToActiveUser",assignLocationToActiveUser);
 
 
 export default route;

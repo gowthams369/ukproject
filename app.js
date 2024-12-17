@@ -9,6 +9,7 @@ import cors from 'cors';
 
 
 
+
 dotenv.config();
 
 const app = express();
@@ -33,6 +34,8 @@ mongoose
 app.get("/", (req, res) => {
   res.send("Hello From database");
 });
+
+
 
 app.use("/api/admin", route);
 app.use("/api/user",userroute);
