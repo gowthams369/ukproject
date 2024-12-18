@@ -1,53 +1,39 @@
 import mongoose from "mongoose";
 
-const locationSchema = new mongoose.Schema({
-  latitude: {
-    type: Number,
+const activitySchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true,
   },
-  longitude: {
-    type: Number,
+  location: {
+    type: String,
     required: true,
   },
-});
-
-const activitySchema = new mongoose.Schema(
-  {
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "User ID is required"],
-    },
-    location: {
-      type: locationSchema, // Use a sub-schema for latitude and longitude
-      required: true,
-    },
-    isActive: {
-      type: Boolean,
-      default: false,
-    },
-    lastUpdated: {
-      type: Date,
-      default: Date.now,
-    },
-    startTime: {
-      type: Date,
-      required: false,
-    },
-    endTime: {
-      type: Date,
-      required: false,
-    },
-    nurseSignature: {
-      type: String, // Store signature as a string (base64 encoded image or a text signature)
-      required: false,
-    },
-    nurseName: {
-      type: String, // Nurse's name
-      required: false,
-    },
+  workDate: {
+    type: Date,
+    required: true,
   },
-  { timestamps: true }
-);
+  isActive: {
+    type: Boolean,
+    default: true,
+  },
+  startTime: {
+    type: Date,
+    default: null,
+  },
+  endTime: {
+    type: Date,
+    default: null,
+  },
+  nurseSignature: {
+    type: String,
+    default: null,
+  },
+  nurseName: {
+    type: String,
+    default: null,
+  },
+}, { timestamps: true });
 
-export const Activity = mongoose.model("Activity", activitySchema);
+export const Activity = mongoose.model('Activity', activitySchema);

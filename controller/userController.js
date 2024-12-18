@@ -4,6 +4,7 @@ import { User } from "../model/userModel.js";
 import AppError from "../utils/error.util.js";
 import { Activity } from "../model/activityModel.js";
 
+
 /**
  * @REGISTER_USER -----------------------REGISTER NEW USER-----------------------
  * Registers a new user by creating a record in the database.
@@ -157,7 +158,7 @@ res.status(200).json({
         firstname: user.firstname,
         lastname: user.lastname,
         email: user.email,
-        phoneNumber:user.phoneNumber,
+        phoneNumber: user.phoneNumber,
         role: user.role,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
@@ -166,46 +167,48 @@ res.status(200).json({
 });
 
 
-// ----setuseractuve-----
+
+
+
+// ----------------------------------------------------------------------------------------------------------------------------------------------------
 export const setUserActive = async (req, res) => {
-  const { userId, readyToWork } = req.body;
+const { userId, readyToWork } = req.body;
 
-  try {
-    // Check if the user exists
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-
-    // Update the user's active status and readiness to work
-    user.isActive = !user.isActive; // Toggle the isActive status
-    if (readyToWork !== undefined) {
-      // Ensure readyToWork is provided and valid
-      user.readyToWork = Array.isArray(user.readyToWork)
-        ? [...user.readyToWork, readyToWork]
-        : [readyToWork];
-    }
-    await user.save();
-
-    // Respond after successfully updating the user
-    res.status(200).json({
-      success: true,
-      message: `User is now ${user.isActive ? "active" : "inactive"}`,
-      user,
-    });
-  } catch (error) {
-    // Handle errors
-    res.status(500).json({ success: false, message: error.message });
+try {
+  // Check if the user exists
+  const user = await User.findById(userId);
+  if (!user) {
+    return res.status(404).json({ success: false, message: "User not found" });
   }
-};
 
+  // Update the user's active status and readiness to work
+  user.isActive = !user.isActive; // Toggle the isActive status
+
+  // Update readyToWork: Set as single value (true/false)
+  if (readyToWork !== undefined) {
+    user.readyToWork = readyToWork; // Ensure it is a boolean value
+  }
+
+  await user.save();
+
+  // Respond after successfully updating the user
+  res.status(200).json({
+    success: true,
+    message: `User is now ${user.isActive ? "active" : "inactive"}`,
+    user,
+  });
+} catch (error) {
+  // Handle errors
+  res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 
 /**
 * Get total working days with total time details for a user
 */
 export const getTotalWorkingDaysWithDetails = async (req, res) => {
-const { userId } = req.params;
+const { userId } = req.body;
 
 if (!userId) {
   return res.status(400).json({ message: "User ID is required." });
@@ -219,7 +222,7 @@ try {
   });
 
   if (activities.length === 0) {
-    return res.status(200).json({ message: "No completed work found for this user." });
+    return res.status(404).json({ message: "No completed work found for this user." });
   }
 
   // Group activities by date and calculate total time
@@ -275,4 +278,81 @@ try {
 const formatTimeInHours = (totalSeconds) => {
 const hours = totalSeconds / 3600; // Convert seconds to hours
 return hours.toFixed(2); // Limit to 2 decimal places
+};
+
+
+/**
+* User starts work by swiping.
+*/
+export const startWork = asyncHandler(async (req, res) => {
+const { userId, userLatitude, userLongitude, startTime } = req.body;
+
+if (!userId || !userLatitude || !userLongitude) {
+  return res
+    .status(400)
+    .json({ message: "User ID, user's current latitude, and longitude are required." });
 }
+
+try {
+  // Fetch user details from the database
+  const user = await User.findById(userId);
+  if (!user) {
+    return res.status(404).json({ message: "User not found." });
+  }
+
+  // Get the assigned work details
+  const { assignedWork } = user;
+  const { startedAt, location } = assignedWork || {};
+
+  // If a task has already started, reset it before assigning a new one
+  if (startedAt) {
+    // Mark the previous work as completed (if any)
+    user.assignedWork.startedAt = null; // Reset the start time
+    user.assignedWork.userCoordinates = null; // Reset coordinates
+
+    // Optionally, you can set additional flags here like 'readyToWork' or 'isActive' to false
+    user.readyToWork = false; // Set to false when starting new work
+    user.isActive = false; // Mark as inactive if needed
+  }
+
+  // Prepare the user's current location (latitude and longitude)
+  const currentLocation = {
+    latitude: userLatitude, // From the request body
+    longitude: userLongitude, // From the request body
+  };
+
+  // Set the start time (use provided time or default to the current time)
+  const startTimeStamp = startTime ? new Date(startTime) : new Date();
+
+  // Ensure startTimeStamp is valid
+  if (isNaN(startTimeStamp.getTime())) {
+    return res.status(400).json({ message: "Invalid start time provided." });
+  }
+
+  // Assign new work
+  user.assignedWork = {
+    location: location || 'New Location', // Update the location for the new task
+    userCoordinates: currentLocation, // Update the user's current coordinates
+    startedAt: startTimeStamp, // Set the start time for the new work
+  };
+
+  // Mark user as ready to work
+  user.readyToWork = true;
+  user.isActive = true;
+
+  // Save the updated user object with the new work details
+  await user.save();
+
+  // Send success response with the start time, location, and coordinates
+  res.status(200).json({
+    success: true,
+    message: "Work started successfully.",
+    startTime: user.assignedWork.startedAt,
+    location: user.assignedWork.location, // The location for the new task
+    userCoordinates: currentLocation, // The user's current coordinates
+  });
+} catch (error) {
+  console.error("Error starting work:", error);
+  res.status(500).json({ message: "Server error", error: error.message });
+}
+});

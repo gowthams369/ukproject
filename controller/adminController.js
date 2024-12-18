@@ -5,7 +5,6 @@ import AppError from "../utils/error.util.js";
 import { User } from "../model/userModel.js";
 import redis from "redis";
 import { Activity } from "../model/activityModel.js";
-
 /**
  * @ADMIN  - Registers a new admin ------------------------------------REGISTER------------------------------------------------
  */
@@ -79,41 +78,6 @@ export const login = asyncHandler(async (req, res, next) => {
   });
 });
 
-
-
-
-/**
- * @ADMIN_GET_UNADMITTED_USERS ----------------GET UNADMITTED USERS---------------
- * Retrieves all users who are not admitted.
- */
-export const getUnadmittedUsers = asyncHandler(async (req, res, next) => {
-  try {
-    // Find all users with isAdmitted set to false
-    const unadmittedUsers = await User.find({ isAdmitted: false }, { password: 0 }); // Exclude password from the response
-
-    // Handle no results found
-    if (!unadmittedUsers || unadmittedUsers.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No unadmitted users found",
-      });
-    }
-
-    // Respond with unadmitted users
-    res.status(200).json({
-      success: true,
-      message: "Unadmitted users fetched successfully",
-      unadmittedUsers,
-    });
-  } catch (error) {
-    // Handle server error
-    res.status(500).json({
-      success: false,
-      message: "An error occurred while fetching unadmitted users",
-      error: error.message,
-    });
-  }
-});
 
 /**
  * @ADMIN_GET_ALL_USERS ----------------------GET ALL USERS-----------------------
@@ -193,42 +157,60 @@ export const admitUser = asyncHandler(async (req, res, next) => {
 });
 
 
-
-
 /**
- * Haversine formula to calculate the distance between two points on Earth.
+ * @ADMIN_GET_UNADMITTED_USERS ----------------GET UNADMITTED USERS---------------
+ * Retrieves all users who are not admitted.
  */
-const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  const toRad = (value) => (value * Math.PI) / 180; // Converts degrees to radians
-  const R = 6371; // Earth's radius in kilometers
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
+export const getUnadmittedUsers = asyncHandler(async (req, res, next) => {
+  try {
+    // Find all users with isAdmitted set to false
+    const unadmittedUsers = await User.find({ isAdmitted: false }, { password: 0 }); // Exclude password from the response
 
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    // Handle no results found
+    if (!unadmittedUsers || unadmittedUsers.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No unadmitted users found",
+      });
+    }
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    // Respond with unadmitted users
+    res.status(200).json({
+      success: true,
+      message: "Unadmitted users fetched successfully",
+      unadmittedUsers,
+    });
+  } catch (error) {
+    // Handle server error
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching unadmitted users",
+      error: error.message,
+    });
+  }
+});
 
-  return R * c; // Distance in kilometers
-};
 
-
-
+// -------------------------------------------------------------------------------------------------------------------------------------------------
 /**
- * Admin assigns a location to an active user or creates a new activity for the next day
- * based on latitude and longitude.
+ * Admin assigns a location to an active user and also sets the work date.
  */
 export const assignLocationToActiveUser = asyncHandler(async (req, res) => {
-  const { userId, location, latitude, longitude } = req.body;
+  const { userId, location, workDate } = req.body;
 
-  if (!userId || !location || !latitude || !longitude) {
+  if (!userId || !location || !workDate) {
     return res
       .status(400)
-      .json({ message: "User ID, location, latitude, and longitude are required." });
+      .json({ message: "User ID, location, and work date are required." });
   }
 
   try {
+    // Validate the work date format
+    const assignedWorkDate = new Date(workDate);
+    if (isNaN(assignedWorkDate.getTime())) {
+      return res.status(400).json({ message: "Invalid work date format." });
+    }
+
     // Ensure the user exists
     const user = await User.findById(userId);
     if (!user) {
@@ -238,34 +220,17 @@ export const assignLocationToActiveUser = asyncHandler(async (req, res) => {
     // Fetch the current active activity for the user
     let activity = await Activity.findOne({ user: userId, isActive: true });
 
-    // Check if the activity exists and belongs to today
-    const today = new Date().setHours(0, 0, 0, 0); // Start of today
-    if (activity && new Date(activity.startTime).setHours(0, 0, 0, 0) === today) {
-      return res.status(400).json({ message: "The user already has an active task for today." });
-    }
-
     // Deactivate the previous activity (if any)
     if (activity) {
       activity.isActive = false;
       await activity.save();
     }
 
-    // Assign the new location only if the user is within a certain distance (e.g., 10 km)
-    const targetLatitude = location.latitude;
-    const targetLongitude = location.longitude;
-
-    const distance = calculateDistance(latitude, longitude, targetLatitude, targetLongitude);
-
-    if (distance > 10) {
-      return res
-        .status(400)
-        .json({ message: "User is too far from the assigned location." });
-    }
-
-    // Create a new activity for today
+    // Create a new activity with the manually assigned work date
     const newActivity = new Activity({
       user: userId,
       location,
+      workDate: assignedWorkDate, // Manually assigned work date
       isActive: true,
       startTime: null, // Reset start time
       endTime: null, // Reset end time
@@ -277,7 +242,7 @@ export const assignLocationToActiveUser = asyncHandler(async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "New activity assigned successfully.",
+      message: "New activity assigned successfully with work date.",
       activity: newActivity,
     });
   } catch (error) {
@@ -288,9 +253,7 @@ export const assignLocationToActiveUser = asyncHandler(async (req, res) => {
 
 
 
-
-
-
+// ------------------------attendance------------------
 export const getAllUsersWorkingDaysWithDetails = async (req, res) => {
   try {
     // Fetch all completed activities

@@ -24,6 +24,10 @@ const adminSchema = new mongoose.Schema(
       default: "admin",
       required: true,
     },
+    location: {
+      type: String,
+      default: null, // Admin location is optional
+    },
   },
   { timestamps: true }
 );

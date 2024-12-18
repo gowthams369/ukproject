@@ -6,7 +6,8 @@ import route from "./route/adminRoute.js";
 import userroute from "./route/userRoute.js";
 import activityroute from "./route/activityRoute.js";
 import cors from 'cors';
-
+import notificationrouter from "./route/notificationRoute.js";
+import "./scheduler.js"
 
 
 
@@ -41,3 +42,4 @@ app.use("/api/admin", route);
 app.use("/api/user",userroute);
 app.use("/api/user",activityroute);
 app.use("/api/admin",activityroute);
+app.use("/api/user",notificationrouter)

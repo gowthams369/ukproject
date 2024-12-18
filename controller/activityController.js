@@ -57,85 +57,6 @@ export const getUserAssignedWork = asyncHandler(async (req, res) => {
 });
 
 /**
- * User starts work by swiping.
- */
-export const startWork = asyncHandler(async (req, res) => {
-  const { userId, userLatitude, userLongitude, startTime } = req.body;
-
-  if (!userId || !userLatitude || !userLongitude) {
-    return res
-      .status(400)
-      .json({ message: "User ID, user's current latitude, and longitude are required." });
-  }
-
-  try {
-    // Fetch user details
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
-
-    // Check if the user already has an active activity
-    const activeActivity = await Activity.findOne({ user: userId, isActive: true });
-    if (activeActivity) {
-      // Deactivate the current activity
-      activeActivity.isActive = false;
-      activeActivity.endTime = new Date(); // Record end time
-      await activeActivity.save();
-    }
-
-    // Check if an assigned location exists
-    const assignedActivity = await Activity.findOne({ user: userId, isActive: false }).sort({
-      createdAt: -1,
-    });
-    if (!assignedActivity || !assignedActivity.location) {
-      return res
-        .status(403)
-        .json({ message: "No assigned location. Please contact the admin." });
-    }
-
-    const { latitude: assignedLatitude, longitude: assignedLongitude } = assignedActivity.location;
-
-    // Validate user's proximity to assigned location
-    const distance = calculateDistance(userLatitude, userLongitude, assignedLatitude, assignedLongitude);
-    if (distance > 0.5) {
-      return res.status(403).json({
-        message: "You must be within 500m of the admin-assigned location to start work.",
-        assignedLocation: assignedActivity.location,
-        userDistanceFromAssigned: `${distance.toFixed(2)} km`,
-      });
-    }
-
-    // Create a new activity for starting work
-    const newActivity = new Activity({
-      user: userId,
-      location: assignedActivity.location,
-      isActive: true,
-      startTime: startTime ? new Date(startTime) : new Date(),
-    });
-
-    await newActivity.save();
-
-    // Update user's current activity
-    user.currentActivity = newActivity._id;
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Work started successfully.",
-      startTime: newActivity.startTime,
-      location: newActivity.location,
-    });
-  } catch (error) {
-    console.error("Error starting work:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
-  }
-});
-
-
-
-
-/**
  * User submits attendance with nurse's signature.
  */
 export const submitNurseSignature = asyncHandler(async (req, res) => {
@@ -148,10 +69,16 @@ export const submitNurseSignature = asyncHandler(async (req, res) => {
   }
 
   try {
+    // Fetch the active activity for the user
     const activity = await Activity.findOne({ user: userId, isActive: true });
 
     if (!activity) {
       return res.status(404).json({ message: "No active work assigned to this user." });
+    }
+
+    // Ensure the start time is set. If it's still null, set it to the current time.
+    if (!activity.startTime) {
+      activity.startTime = new Date(); // Set the start time if it's missing
     }
 
     const distance = calculateDistance(userLatitude, userLongitude, activity.latitude, activity.longitude);
@@ -161,10 +88,19 @@ export const submitNurseSignature = asyncHandler(async (req, res) => {
         .json({ message: "You must be within 500m of the starting location to submit attendance." });
     }
 
+    // Set end time and other details
     activity.endTime = new Date(endTime);
     activity.nurseSignature = nurseSignature;
     activity.nurseName = nurseName;
     activity.isActive = false;
+
+    // Mark the user as not ready to work
+    const user = await User.findById(userId);
+    if (user) {
+      user.readyToWork = false;
+      user.isActive = false;
+      await user.save();
+    }
 
     await activity.save();
 
@@ -172,7 +108,7 @@ export const submitNurseSignature = asyncHandler(async (req, res) => {
       success: true,
       message: "Attendance submitted successfully.",
       data: {
-        startTime: activity.startTime,
+        startTime: activity.startTime, // Ensure start time is correctly included
         endTime: activity.endTime,
         nurseSignature: activity.nurseSignature,
         nurseName: activity.nurseName,

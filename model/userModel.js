@@ -1,3 +1,4 @@
+// Define the user schema
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 
@@ -23,28 +24,38 @@ const userSchema = new mongoose.Schema(
       required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters long"],
     },
-    currentActivity: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Activity",
-      default: null,  // Initially, no activity is assigned
-    },
     role: {
       type: String,
       default: "user", // Default role is 'user'
       required: true,
     },
-    readyToWork: {
-      type: Boolean,
-      default: false, // Default is 'true' (user is ready to work)
-    },
     isAdmitted: { type: Boolean, default: false },
-    readyToWork: [{
+    readyToWork: [
+      {
         type: Boolean,
-    }],
+      },
+    ],
     isActive: { 
       type: Boolean, 
       default: false, // Default to inactive when a user is created
       required: true 
+    },
+    assignedWork: {
+      location: {
+        type: String, // Location name assigned by admin
+        required: false, // Optional location name
+      },
+      userCoordinates: { // User's current coordinates when they start work
+        type: {
+          latitude: { type: Number, required: false },
+          longitude: { type: Number, required: false },
+        },
+        required: false,
+      },
+      startedAt: {
+        type: Date,
+        default: null, // Time when the user starts the work
+      },
     },
   },
   { timestamps: true }
