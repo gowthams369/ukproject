@@ -52,83 +52,56 @@ export const registerUser = asyncHandler(async (req, res, next) => {
     },
   });
 });
-
 /**
-* @USER_LOGIN -----------------------USER LOGIN-----------------------
-* Authenticates a user and generates a JWT token.
-*/
-export const loginUser = asyncHandler(async (req, res, next) => {
+ * @USER_LOGIN -----------------------USER LOGIN-----------------------
+ * Authenticates a user and generates a JWT token.
+ */
+export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
-  // Validate required fields
-  if (!email || !password) {
-    return next(new AppError("Email and password are required", 400));
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    // Store user data in the session
+    req.session.userId = user._id;
+    req.session.readyToWork = user.readyToWork;
+
+    res.status(200).json({
+      success: true,
+      message: 'Login successful',
+      user: {
+        id: user._id,
+        email: user.email,
+        isActive: user.isActive,
+        readyToWork: user.readyToWork,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
-
-  // Find the user by email
-  const user = await User.findOne({ email });
-  if (!user) {
-    return next(new AppError("Invalid email or password", 401));
-  }
-
-  if (!user.isAdmitted) {
-    return next(new AppError("User has not been admitted by the admin", 403));
-  }
-
-  // Compare the provided password with the stored hashed password
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) {
-    return next(new AppError("Invalid email or password", 401));
-  }
-
-  // Generate a token for the authenticated user
-  const token = user.generateAuthToken();
-
-  res.status(200).json({
-    success: true,
-    message: "Login successful",
-    user: {
-      id: user._id,
-      firstname: user.firstname,
-      lastname: user.lastname,
-      email: user.email,
-      role: user.role,
-    },
-    token, // Return the JWT token
-  });
-});
-
-
+};
 /**
-* @USER_LOGOUT -----------------------USER LOGOUT-----------------------
-* Logs out a user by marking them unavailable for work.
-*/
-export const logoutUser = asyncHandler(async (req, res, next) => {
-  const { userId } = req.body;
+ * @USER_LOGOUT -----------------------USER LOGOUT-----------------------
+ * Logs out a user by marking them unavailable for work.
+ */
+export const logoutUser = (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ success: false, message: 'Failed to log out' });
+    }
 
-  // Validate required fields
-  if (!userId) {
-    return next(new AppError("User ID is required for logout", 400));
-  }
-
-  // Find the user by ID
-  const user = await User.findById(userId);
-  if (!user) {
-    return next(new AppError("User not found", 404));
-  }
-
-  // Mark the user as unavailable for work
-  user.readyToWork = false;
-  await user.save();
-
-  // Here we do not need to explicitly clear any session, 
-  // as we are relying on JWT for authentication.
-
-  res.status(200).json({
-    success: true,
-    message: "Logout successful. User is marked as unavailable for work.",
+    res.clearCookie('connect.sid'); // Clear the session cookie
+    res.status(200).json({ success: true, message: 'Logout successful' });
   });
-});
+};
 
 
 /**
@@ -356,3 +329,31 @@ try {
   res.status(500).json({ message: "Server error", error: error.message });
 }
 });
+
+
+
+
+export const getUserSession = async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ success: false, message: "Not logged in" });
+  }
+
+  try {
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        email: user.email,
+        isActive: user.isActive,
+        readyToWork: req.session.readyToWork, // From session
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
