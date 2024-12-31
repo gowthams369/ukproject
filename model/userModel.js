@@ -1,9 +1,6 @@
-// Define the user schema
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-
-
 
 const userSchema = new mongoose.Schema(
   {
@@ -36,7 +33,7 @@ const userSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: false, required: true },
     assignedWork: {
       location: {
-        type: String, // Location assigned by admin
+        type: String, 
         required: false,
       },
       userCoordinates: {
@@ -77,4 +74,4 @@ userSchema.methods.generateAuthToken = function () {
 };
 
 // Export the User model
-export const User=mongoose.model('User',userSchema)
+export const User = mongoose.model("User", userSchema);

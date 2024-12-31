@@ -4,40 +4,29 @@ import { User } from "../model/userModel.js";
 import AppError from "../utils/error.util.js";
 import { Activity } from "../model/activityModel.js";
 
-
-/**
- * @REGISTER_USER -----------------------REGISTER NEW USER-----------------------
- * Registers a new user by creating a record in the database.
- */
 export const registerUser = asyncHandler(async (req, res, next) => {
   const { firstname, lastname, email, dateOfBirth, phoneNumber, password } = req.body;
 
-  // Validate required fields
   if (!firstname || !lastname || !email || !dateOfBirth || !phoneNumber || !password) {
     return next(new AppError("All fields are required", 400));
   }
 
-  // Check if the email is already registered
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     return next(new AppError("Email is already registered", 400));
   }
 
-  // Hash the password before saving
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  // Create a new user
   const user = new User({
     firstname,
     lastname,
     email,
     dateOfBirth,
     phoneNumber,
-    password: hashedPassword,
+    password, 
     isAdmitted: false,
+    isActive: false,
   });
 
-  // Save the user to the database
   await user.save();
 
   res.status(201).json({
@@ -52,31 +41,27 @@ export const registerUser = asyncHandler(async (req, res, next) => {
     },
   });
 });
-/**
- * @USER_LOGIN -----------------------USER LOGIN-----------------------
- * Authenticates a user and generates a JWT token.
- */
-export const loginUser = async (req, res) => {
+
+export const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
-    // Store user data in the session
     req.session.userId = user._id;
     req.session.readyToWork = user.readyToWork;
 
     res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
       user: {
         id: user._id,
         email: user.email,
@@ -85,9 +70,12 @@ export const loginUser = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Error during login:", error);
+    res.status(500).json({ success: false, message: "Server error. Please try again." });
   }
 };
+
+
 /**
  * @USER_LOGOUT -----------------------USER LOGOUT-----------------------
  * Logs out a user by marking them unavailable for work.
