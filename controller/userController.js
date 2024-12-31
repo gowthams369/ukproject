@@ -7,40 +7,46 @@ import { Activity } from "../model/activityModel.js";
 export const registerUser = asyncHandler(async (req, res, next) => {
   const { firstname, lastname, email, dateOfBirth, phoneNumber, password } = req.body;
 
+  // Check if all required fields are provided
   if (!firstname || !lastname || !email || !dateOfBirth || !phoneNumber || !password) {
     return next(new AppError("All fields are required", 400));
   }
 
+  // Check if the email is already registered
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     return next(new AppError("Email is already registered", 400));
   }
 
+  // Create a new user
+  const hashedPassword = await bcrypt.hash(password, 10); // Hash the password
   const user = new User({
     firstname,
     lastname,
     email,
     dateOfBirth,
     phoneNumber,
-    password, 
-    isAdmitted: false,
-    isActive: false,
+    password: hashedPassword,
+    isAdmitted: false, // Default as not admitted
+    isActive: false,   // Default as not active
   });
 
+  // Save the user
   await user.save();
 
   res.status(201).json({
     success: true,
-    message: "User registered successfully",
+    message: "User registered successfully. Please wait for admin approval.",
     user: {
       id: user._id,
       firstname: user.firstname,
       lastname: user.lastname,
       email: user.email,
-      role: user.role,
     },
   });
 });
+
+
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -60,14 +66,13 @@ export const login = async (req, res) => {
     }
 
     // Verify the password
-    const isPasswordValid = await user.comparePassword(password);
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
     // Set session data
     req.session.userId = user._id;
-    req.session.readyToWork = user.readyToWork;
 
     res.status(200).json({
       success: true,
@@ -76,7 +81,6 @@ export const login = async (req, res) => {
         id: user._id,
         email: user.email,
         isActive: user.isActive,
-        readyToWork: user.readyToWork,
       },
     });
   } catch (error) {

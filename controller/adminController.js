@@ -84,7 +84,7 @@ export const login = asyncHandler(async (req, res, next) => {
  * Allows an admin to retrieve all registered users.
  */
 export const getAllUsers = asyncHandler(async (req, res, next) => {
-  const users = await User.find({}, { password: 0 }); // Exclude password from the response
+  const users = await User.find({}, { password: 0 }); 
 
   if (!users || users.length === 0) {
     return next(new AppError("No users found", 404));
