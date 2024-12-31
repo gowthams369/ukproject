@@ -46,7 +46,6 @@ export const registerUser = asyncHandler(async (req, res, next) => {
   });
 });
 
-
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -79,6 +78,8 @@ export const login = async (req, res) => {
       message: "Login successful",
       user: {
         id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
         email: user.email,
         isActive: user.isActive,
       },
@@ -88,7 +89,6 @@ export const login = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error. Please try again." });
   }
 };
-
 
 
 /**
