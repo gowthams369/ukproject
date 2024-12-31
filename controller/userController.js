@@ -16,10 +16,8 @@ export const registerUser = asyncHandler(async (req, res, next) => {
     return next(new AppError("Email is already registered", 400));
   }
 
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-
-  console.log("Hashed Password:", hashedPassword); // Debugging log
+  const hashedPassword = await bcrypt.hash(password, 10); // Hash the password
+  console.log("Hashed Password (Registration):", hashedPassword); // Debugging
 
   const user = new User({
     firstname,
@@ -46,12 +44,11 @@ export const registerUser = asyncHandler(async (req, res, next) => {
   });
 });
 
-
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    console.log("Login Request Data:", req.body); // Debugging log
+    console.log("Login Request Data:", req.body); // Debugging
 
     const user = await User.findOne({ email });
     if (!user) {
@@ -65,12 +62,13 @@ export const login = async (req, res) => {
       });
     }
 
+    console.log("Plaintext Password:", password); // Debugging
+    console.log("Stored Hashed Password:", user.password); // Debugging
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      console.error("Password mismatch:");
-      console.error("Entered Password:", password);
-      console.error("Stored Hashed Password:", user.password);
+      console.error("Password mismatch!");
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
@@ -92,7 +90,6 @@ export const login = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error. Please try again." });
   }
 };
-
 
 
 /**
