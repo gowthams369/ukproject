@@ -41,21 +41,31 @@ export const registerUser = asyncHandler(async (req, res, next) => {
     },
   });
 });
-
 export const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    // Check if the user exists
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
+    // Check if the user has been admitted by the admin
+    if (!user.isAdmitted) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has not been approved by the admin.",
+      });
+    }
+
+    // Verify the password
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
+    // Set session data
     req.session.userId = user._id;
     req.session.readyToWork = user.readyToWork;
 
@@ -74,6 +84,7 @@ export const login = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error. Please try again." });
   }
 };
+
 
 
 /**
