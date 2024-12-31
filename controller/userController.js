@@ -4,22 +4,22 @@ import { User } from "../model/userModel.js";
 import AppError from "../utils/error.util.js";
 import { Activity } from "../model/activityModel.js";
 
+
 export const registerUser = asyncHandler(async (req, res, next) => {
   const { firstname, lastname, email, dateOfBirth, phoneNumber, password } = req.body;
 
-  // Check if all required fields are provided
   if (!firstname || !lastname || !email || !dateOfBirth || !phoneNumber || !password) {
     return next(new AppError("All fields are required", 400));
   }
 
-  // Check if the email is already registered
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     return next(new AppError("Email is already registered", 400));
   }
 
-  // Create a new user
-  const hashedPassword = await bcrypt.hash(password, 10); // Hash the password
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
   const user = new User({
     firstname,
     lastname,
@@ -27,16 +27,15 @@ export const registerUser = asyncHandler(async (req, res, next) => {
     dateOfBirth,
     phoneNumber,
     password: hashedPassword,
-    isAdmitted: false, // Default as not admitted
-    isActive: false,   // Default as not active
+    isAdmitted: false,
+    isActive: false,
   });
 
-  // Save the user
   await user.save();
 
   res.status(201).json({
     success: true,
-    message: "User registered successfully. Please wait for admin approval.",
+    message: "User registered successfully",
     user: {
       id: user._id,
       firstname: user.firstname,
@@ -45,6 +44,7 @@ export const registerUser = asyncHandler(async (req, res, next) => {
     },
   });
 });
+
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
