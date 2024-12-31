@@ -4,28 +4,21 @@ import { User } from "../model/userModel.js";
 import AppError from "../utils/error.util.js";
 import { Activity } from "../model/activityModel.js";
 
-/**
- * @REGISTER_USER -----------------------REGISTER NEW USER-----------------------
- * Registers a new user by creating a record in the database.
- */
 export const registerUser = asyncHandler(async (req, res, next) => {
   const { firstname, lastname, email, dateOfBirth, phoneNumber, password } = req.body;
 
-  // Validate required fields
   if (!firstname || !lastname || !email || !dateOfBirth || !phoneNumber || !password) {
     return next(new AppError("All fields are required", 400));
   }
 
-  // Check if the email is already registered
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     return next(new AppError("Email is already registered", 400));
   }
 
-  // Hash the password before saving
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
 
-  // Create a new user
   const user = new User({
     firstname,
     lastname,
@@ -34,9 +27,9 @@ export const registerUser = asyncHandler(async (req, res, next) => {
     phoneNumber,
     password: hashedPassword,
     isAdmitted: false,
+    isActive: false,
   });
 
-  // Save the user to the database
   await user.save();
 
   res.status(201).json({
@@ -47,47 +40,58 @@ export const registerUser = asyncHandler(async (req, res, next) => {
       firstname: user.firstname,
       lastname: user.lastname,
       email: user.email,
-      role: user.role,
     },
   });
 });
 
-/**
-* @USER_LOGIN -----------------------USER LOGIN-----------------------
-* Authenticates a user and generates a JWT token.
-*/
-export const loginUser = async (req, res) => {
-const { email, password } = req.body;
 
-try {
-  const user = await User.findOne({ email });
-  if (!user) {
-    return res.status(404).json({ success: false, message: 'User not found' });
+export const login = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Check if the user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Check if the user has been admitted by the admin
+    if (!user.isAdmitted) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has not been approved by the admin.",
+      });
+    }
+
+    // Verify the password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      console.error("Password mismatch: Entered Password:", password, "Hashed Password:", user.password);
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+
+    // Set session data
+    req.session.userId = user._id;
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      user: {
+        id: user._id,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        email: user.email,
+        isActive: user.isActive,
+      },
+    });
+  } catch (error) {
+    console.error("Error during login:", error);
+    res.status(500).json({ success: false, message: "Server error. Please try again." });
   }
-
-  const isPasswordValid = await user.comparePassword(password);
-  if (!isPasswordValid) {
-    return res.status(401).json({ success: false, message: 'Invalid credentials' });
-  }
-
-  // Store user data in the session
-  req.session.userId = user._id;
-  req.session.readyToWork = user.readyToWork;
-
-  res.status(200).json({
-    success: true,
-    message: 'Login successful',
-    user: {
-      id: user._id,
-      email: user.email,
-      isActive: user.isActive,
-      readyToWork: user.readyToWork,
-    },
-  });
-} catch (error) {
-  res.status(500).json({ success: false, message: error.message });
-}
 };
+
+
+
 /**
  * @USER_LOGOUT -----------------------USER LOGOUT-----------------------
  * Logs out a user by marking them unavailable for work.
