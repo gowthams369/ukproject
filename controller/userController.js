@@ -4,7 +4,6 @@ import { User } from "../model/userModel.js";
 import AppError from "../utils/error.util.js";
 import { Activity } from "../model/activityModel.js";
 
-
 export const registerUser = asyncHandler(async (req, res, next) => {
   const { firstname, lastname, email, dateOfBirth, phoneNumber, password } = req.body;
 
@@ -67,6 +66,7 @@ export const login = async (req, res) => {
     // Verify the password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      console.error("Password mismatch: Entered Password:", password, "Hashed Password:", user.password);
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
@@ -89,6 +89,7 @@ export const login = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error. Please try again." });
   }
 };
+
 
 
 /**
