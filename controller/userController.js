@@ -19,6 +19,8 @@ export const registerUser = asyncHandler(async (req, res, next) => {
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
 
+  console.log("Hashed Password:", hashedPassword); // Debugging log
+
   const user = new User({
     firstname,
     lastname,
@@ -49,13 +51,13 @@ export const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Check if the user exists
+    console.log("Login Request Data:", req.body); // Debugging log
+
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // Check if the user has been admitted by the admin
     if (!user.isAdmitted) {
       return res.status(403).json({
         success: false,
@@ -63,14 +65,15 @@ export const login = async (req, res) => {
       });
     }
 
-    // Verify the password
     const isPasswordValid = await bcrypt.compare(password, user.password);
+
     if (!isPasswordValid) {
-      console.error("Password mismatch: Entered Password:", password, "Hashed Password:", user.password);
+      console.error("Password mismatch:");
+      console.error("Entered Password:", password);
+      console.error("Stored Hashed Password:", user.password);
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
-    // Set session data
     req.session.userId = user._id;
 
     res.status(200).json({
